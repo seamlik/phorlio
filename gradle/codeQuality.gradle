@@ -1,0 +1,14 @@
+apply plugin: 'checkstyle'
+
+checkstyle {
+  toolVersion = '8.10.1'
+  File styleFile = file("${rootProject.buildDir}/config.xml")
+  if (!styleFile.exists()) {
+    mkdir styleFile.parent
+    styleFile.createNewFile()
+    styleFile.write(new URL(
+        "https://raw.githubusercontent.com/checkstyle/checkstyle/checkstyle-${toolVersion}/src/main/resources/google_checks.xml"
+    ).text)
+  }
+  config = resources.text.fromFile(styleFile)
+}

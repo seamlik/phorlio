@@ -1,2 +1,10 @@
+*.iml
+.gradle/
+.idea/
+/gradle/wrapper/
+/gradlew
+/gradlew.bat
 Cargo.lock
+build/
+out/
 target/

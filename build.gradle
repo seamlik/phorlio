@@ -1,0 +1,25 @@
+apply plugin: 'base'
+
+subprojects {
+  apply plugin: 'java-library'
+  archivesBaseName = "phorlio-${name}"
+  group = 'phorlio'
+  version = file("${rootDir}/VERSION").text
+  repositories {
+    mavenLocal()
+    jcenter()
+  }
+  javadoc {
+    options {
+      links(
+        'https://docs.oracle.com/javase/10/docs/api',
+        'http://reactivex.io/RxJava/javadoc',
+        'https://checkerframework.org/api'
+      )
+      addBooleanOption('javafx', true)
+    }
+  }
+  apply from: "${rootDir}/gradle/codeQuality.gradle"
+}
+
+defaultTasks 'assemble', 'javadoc'

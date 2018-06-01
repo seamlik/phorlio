@@ -1,0 +1,7 @@
+include ':client'
+include ':core'
+
+rootProject.children.each {
+  it.projectDir = rootDir.toPath().resolve('java').resolve(it.name).toFile()
+}
+rootProject.name = 'phorlio'

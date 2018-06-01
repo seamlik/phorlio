@@ -1,0 +1,4 @@
+dependencies {
+  api 'rxbeans:rxbeans:0.1'
+  implementation 'io.netty:netty-transport:4.1.25.Final'
+}
