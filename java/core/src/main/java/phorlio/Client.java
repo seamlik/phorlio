@@ -12,14 +12,12 @@ import java.net.InetSocketAddress;
 import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.util.Collection;
-import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Map;
+import java.util.Set;
 import java.util.function.Predicate;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.util.stream.Stream;
 import rxbeans.MutableProperty;
 import rxbeans.Property;
 import rxbeans.StandardProperty;
@@ -33,8 +31,7 @@ public class Client implements AutoCloseable {
   private final MutableProperty<List<InetSocketAddress>> servers = new StandardProperty<>(
       List.of()
   );
-  private final Map<Inet4Address, UdpTransceiver> transceivers4 = new LinkedHashMap<>();
-  private final Map<Inet6Address, UdpTransceiver> transceivers6 = new LinkedHashMap<>();
+  private final Set<UdpTransceiver> transceivers = new LinkedHashSet<>();
   private final Logger logger = Logger.getAnonymousLogger();
   private final FlowableProcessor<Response> inboundResponseStream = PublishProcessor
       .<Response>create()
@@ -48,9 +45,8 @@ public class Client implements AutoCloseable {
     final Predicate<UdpTransceiver> predicate = it -> {
       return it.stateProperty().get() != ServiceState.RUNNING;
     };
-    transceivers4.values().removeIf(predicate);
-    transceivers6.values().removeIf(predicate);
-    if (transceivers4.isEmpty() && transceivers6.isEmpty()) {
+    transceivers.removeIf(predicate);
+    if (transceivers.isEmpty()) {
       throw new SocketException("Failed to open sockets on every single home interface.");
     }
   }
@@ -62,10 +58,10 @@ public class Client implements AutoCloseable {
   private void logSuccessfulInitialization() {
     final var msg = new StringBuilder();
     msg.append("Opened sockets:").append(System.lineSeparator());
-    Stream
-        .of(transceivers4.values(), transceivers6.values())
-        .flatMap(Collection::stream)
-        .map(UdpTransceiver::getLocalSocketAddress)
+    transceivers
+        .stream()
+        .map(it -> it.getLocalSocketAddress().toString())
+        .sorted()
         .forEachOrdered(it -> msg.append("  ").append(it));
     logger.info(msg.toString());
   }
@@ -91,21 +87,15 @@ public class Client implements AutoCloseable {
     }
     for (final var addr : normalizedHomes) {
       if (addr.getAddress() instanceof Inet4Address) {
-        transceivers4.put(
-            (Inet4Address) addr.getAddress(),
-            new NettyTransceiver(
-                addr,
-                List.of(new InetSocketAddress(Constants.MULTICAST_IPV4, Constants.PORT_CLIENT))
-            )
-        );
+        transceivers.add(new NettyTransceiver(
+            addr,
+            List.of(new InetSocketAddress(Constants.MULTICAST_IPV4, Constants.PORT_CLIENT))
+        ));
       } else if (addr.getAddress() instanceof Inet6Address) {
-        transceivers6.put(
-            (Inet6Address) addr.getAddress(),
-            new NettyTransceiver(
-                addr,
-                List.of(new InetSocketAddress(Constants.MULTICAST_IPV6, Constants.PORT_CLIENT))
-            )
-        );
+        transceivers.add(new NettyTransceiver(
+            addr,
+            List.of(new InetSocketAddress(Constants.MULTICAST_IPV6, Constants.PORT_CLIENT))
+        ));
       } else {
         logger.info("An IP address of unsupported version is used: " + addr.toString());
       }
@@ -131,8 +121,7 @@ public class Client implements AutoCloseable {
         default: break;
       }
       return Observable
-          .fromArray(transceivers4.values(), transceivers6.values())
-          .flatMap(Observable::fromIterable)
+          .fromIterable(transceivers)
           .flatMapCompletable(
               it -> it.start().doOnError(this::logFailedTransceiver).onErrorComplete()
           )
@@ -167,7 +156,6 @@ public class Client implements AutoCloseable {
   @Override
   public void close() {
     state.change(ServiceState.CLOSED);
-    transceivers4.values().forEach(UdpTransceiver::close);
-    transceivers6.values().forEach(UdpTransceiver::close);
+    transceivers.forEach(UdpTransceiver::close);
   }
 }
