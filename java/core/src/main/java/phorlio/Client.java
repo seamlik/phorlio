@@ -12,6 +12,7 @@ import java.net.InetSocketAddress;
 import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.util.Collection;
+import java.util.EventObject;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -20,12 +21,27 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import rxbeans.MutableProperty;
 import rxbeans.Property;
+import rxbeans.StandardObject;
 import rxbeans.StandardProperty;
 
 /**
  * PCP client.
  */
-public class Client implements AutoCloseable {
+public class Client extends StandardObject implements AutoCloseable {
+
+  public class ServerRestartedEvent extends EventObject {
+
+    private final InetAddress ipAddress;
+
+    public ServerRestartedEvent(final InetAddress ipAddress) {
+      super(Client.this);
+      this.ipAddress = ipAddress;
+    }
+
+    public InetAddress getIpAddress() {
+      return ipAddress;
+    }
+  }
 
   private final MutableProperty<ServiceState> state = new StandardProperty<>(ServiceState.CREATED);
   private final MutableProperty<List<InetSocketAddress>> servers = new StandardProperty<>(
@@ -36,6 +52,7 @@ public class Client implements AutoCloseable {
   private final FlowableProcessor<Response> inboundResponseStream = PublishProcessor
       .<Response>create()
       .toSerialized();
+  private long epoch;
 
   private void handlePacket(final DatagramPacket packet) {
     throw new UnsupportedOperationException();
