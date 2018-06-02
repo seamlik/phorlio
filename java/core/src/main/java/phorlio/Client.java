@@ -19,6 +19,7 @@ import java.util.Map;
 import java.util.function.Predicate;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.Stream;
 import rxbeans.MutableProperty;
 import rxbeans.Property;
 import rxbeans.StandardProperty;
@@ -56,6 +57,17 @@ public class Client implements AutoCloseable {
 
   private void logFailedTransceiver(final Throwable err) {
     logger.log(Level.SEVERE, "Failed to open a socket", err);
+  }
+
+  private void logSuccessfulInitialization() {
+    final var msg = new StringBuilder();
+    msg.append("Opened sockets:").append(System.lineSeparator());
+    Stream
+        .of(transceivers4.values(), transceivers6.values())
+        .flatMap(Collection::stream)
+        .map(UdpTransceiver::getLocalSocketAddress)
+        .forEachOrdered(it -> msg.append("  ").append(it));
+    logger.info(msg.toString());
   }
 
   /**
@@ -124,8 +136,11 @@ public class Client implements AutoCloseable {
           .flatMapCompletable(
               it -> it.start().doOnError(this::logFailedTransceiver).onErrorComplete()
           )
-          .doOnComplete(this::cleanUpFailedTransceivers)
-          .doOnComplete(() -> this.state.change(ServiceState.RUNNING))
+          .andThen(Completable.fromAction(() -> {
+            cleanUpFailedTransceivers();
+            this.state.change(ServiceState.RUNNING);
+            logSuccessfulInitialization();
+          }))
           .doFinally(() -> {
             if (stateProperty().get() != ServiceState.RUNNING) {
               close();
