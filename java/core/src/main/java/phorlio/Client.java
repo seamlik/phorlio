@@ -81,12 +81,18 @@ public class Client implements AutoCloseable {
       if (addr.getAddress() instanceof Inet4Address) {
         transceivers4.put(
             (Inet4Address) addr.getAddress(),
-            new NettyTransceiver(addr, List.of(Constants.MULTICAST_IPV4))
+            new NettyTransceiver(
+                addr,
+                List.of(new InetSocketAddress(Constants.MULTICAST_IPV4, Constants.PORT_CLIENT))
+            )
         );
       } else if (addr.getAddress() instanceof Inet6Address) {
         transceivers6.put(
             (Inet6Address) addr.getAddress(),
-            new NettyTransceiver(addr, List.of(Constants.MULTICAST_IPV6))
+            new NettyTransceiver(
+                addr,
+                List.of(new InetSocketAddress(Constants.MULTICAST_IPV6, Constants.PORT_CLIENT))
+            )
         );
       } else {
         logger.info("An IP address of unsupported version is used: " + addr.toString());

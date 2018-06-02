@@ -8,13 +8,12 @@ import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.DatagramChannel;
 import io.netty.channel.socket.nio.NioDatagramChannel;
+import io.netty.util.NetUtil;
 import io.reactivex.Completable;
-import io.reactivex.schedulers.Schedulers;
+import io.reactivex.Observable;
 import java.net.DatagramPacket;
-import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.util.Collection;
-import java.util.stream.Collectors;
 import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
 
 public class NettyTransceiver extends UdpTransceiver {
@@ -28,7 +27,8 @@ public class NettyTransceiver extends UdpTransceiver {
     inboundPacketStream.onNext(new DatagramPacket(bytes, bytes.length, packet.sender()));
   }
 
-  public NettyTransceiver(final InetSocketAddress local, final Collection<InetAddress> multicast) {
+  public NettyTransceiver(final InetSocketAddress local,
+                          final Collection<InetSocketAddress> multicast) {
     super(local, multicast);
   }
 
@@ -57,19 +57,24 @@ public class NettyTransceiver extends UdpTransceiver {
           readPacket(msg);
         }
       });
-      return Completable.fromAction(() -> {
-        channel = (DatagramChannel) bootstrap.bind(suggestedLocalSocketAddress).sync().channel();
-        final var multicastTasks = multicastGroups
-            .parallelStream()
-            .map(it -> Completable.fromFuture(channel.joinGroup(it)).subscribeOn(Schedulers.io()))
-            .collect(Collectors.toList());
-        Completable.merge(multicastTasks).blockingAwait();
-        this.state.change(ServiceState.RUNNING);
-      }).doFinally(() -> {
-        if (stateProperty().get() != ServiceState.RUNNING) {
-          close();
-        }
-      });
+      return Completable
+          .fromAction(() -> channel = (DatagramChannel) bootstrap
+              .bind(suggestedLocalSocketAddress)
+              .sync()
+              .channel()
+          )
+          .andThen(Observable
+              .fromIterable(multicastGroups)
+              .flatMapCompletable(
+                  it -> Completable.fromFuture(channel.joinGroup(it, NetUtil.LOOPBACK_IF))
+              )
+          )
+          .andThen(Completable.fromAction(() -> this.state.change(ServiceState.RUNNING)))
+          .doFinally(() -> {
+            if (stateProperty().get() != ServiceState.RUNNING) {
+              close();
+            }
+          });
     });
   }
 

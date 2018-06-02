@@ -6,10 +6,10 @@ import io.reactivex.annotations.SchedulerSupport;
 import io.reactivex.processors.FlowableProcessor;
 import io.reactivex.processors.PublishProcessor;
 import java.net.DatagramPacket;
-import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.util.Collection;
 import java.util.Set;
+import org.checkerframework.checker.nullness.qual.Nullable;
 import rxbeans.MutableProperty;
 import rxbeans.Property;
 import rxbeans.StandardProperty;
@@ -23,10 +23,11 @@ public abstract class UdpTransceiver implements AutoCloseable {
   protected final FlowableProcessor<DatagramPacket> inboundPacketStream = PublishProcessor
       .<DatagramPacket>create()
       .toSerialized();
-  protected final Set<InetAddress> multicastGroups;
-  protected final InetSocketAddress suggestedLocalSocketAddress;
+  protected final Set<InetSocketAddress> multicastGroups;
+  protected final @Nullable InetSocketAddress suggestedLocalSocketAddress;
 
-  public UdpTransceiver(final InetSocketAddress local, final Collection<InetAddress> multicast) {
+  public UdpTransceiver(final InetSocketAddress local,
+                        final Collection<InetSocketAddress> multicast) {
     suggestedLocalSocketAddress = local;
     multicastGroups = Set.copyOf(multicast);
   }
