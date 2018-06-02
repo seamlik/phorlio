@@ -79,7 +79,7 @@ public class Client extends StandardObject implements AutoCloseable {
         .stream()
         .map(it -> it.getLocalSocketAddress().toString())
         .sorted()
-        .forEachOrdered(it -> msg.append("  ").append(it));
+        .forEachOrdered(it -> msg.append("  ").append(it).append(System.lineSeparator()));
     logger.info(msg.toString());
   }
 
