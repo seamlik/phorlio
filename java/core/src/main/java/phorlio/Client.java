@@ -139,9 +139,7 @@ public class Client extends StandardObject implements AutoCloseable {
       }
       return Observable
           .fromIterable(transceivers)
-          .flatMapCompletable(
-              it -> it.start().doOnError(this::logFailedTransceiver).onErrorComplete()
-          )
+          .flatMapCompletable(it -> it.start().doOnError(this::logFailedTransceiver))
           .andThen(Completable.fromAction(() -> {
             cleanUpFailedTransceivers();
             this.state.change(ServiceState.RUNNING);
