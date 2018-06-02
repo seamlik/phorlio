@@ -9,8 +9,8 @@ import java.net.Inet4Address;
 import java.net.Inet6Address;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.NetworkInterface;
 import java.net.SocketException;
-import java.net.UnknownHostException;
 import java.util.Collection;
 import java.util.EventObject;
 import java.util.LinkedHashSet;
@@ -54,6 +54,28 @@ public class Client extends StandardObject implements AutoCloseable {
       .toSerialized();
   private long epoch;
 
+  private static boolean isDefaultNetworkInterface(final NetworkInterface it) {
+    try {
+      return it.isUp() && !it.isVirtual() && !it.isLoopback();
+    } catch (SocketException err) {
+      throw new RuntimeException(err);
+    }
+  }
+
+  private static NetworkInterface findDefaultNetworkInterface() {
+    return Observable
+        .fromIterable(() -> {
+          try {
+            return NetworkInterface.getNetworkInterfaces().asIterator();
+          } catch (SocketException err) {
+            throw new RuntimeException(err);
+          }
+        })
+        .filter(Client::isDefaultNetworkInterface)
+        .firstOrError()
+        .blockingGet();
+  }
+
   private void handlePacket(final DatagramPacket packet) {
     throw new UnsupportedOperationException();
   }
@@ -85,19 +107,21 @@ public class Client extends StandardObject implements AutoCloseable {
 
   /**
    * Default constructor.
-   * @param homes Manually specifies the local address and port to use PCP. Use an empty
-   *              {@link Collection} in order to use the default ones chosen by the system.
+   * @param homes Manually specifies the {@link NetworkInterface} to use PCP. Use an empty
+   *        {@link Collection} in order to choose a default one.
+   * @throws IllegalStateException When fail to find a default home interface is found.
    */
   public Client(final Collection<InetSocketAddress> homes) {
     final var normalizedHomes = new LinkedHashSet<InetSocketAddress>();
     if (homes.isEmpty()) {
-      try {
-        normalizedHomes.add(new InetSocketAddress(
-            InetAddress.getByName("::"),
-            Constants.PORT_CLIENT
-        ));
-      } catch (UnknownHostException err) {
-        throw new RuntimeException(err);
+      findDefaultNetworkInterface()
+          .getInterfaceAddresses()
+          .forEach(it -> normalizedHomes.add(new InetSocketAddress(
+              it.getAddress(),
+              Constants.PORT_CLIENT
+          )));
+      if (normalizedHomes.isEmpty()) {
+        throw new IllegalStateException("Could not find a suitable home interface.");
       }
     } else {
       normalizedHomes.addAll(homes);
