@@ -1,7 +1,7 @@
 apply plugin: 'application'
 
 applicationName = rootProject.name
-mainClassName = "${rootProject.name}.Main"
+mainClassName = 'phorlio.cli.Client'
 
 dependencies {
   implementation 'com.beust:jcommander:1.71'

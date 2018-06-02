@@ -1,4 +1,4 @@
-include ':client'
+include ':cli'
 include ':core'
 
 rootProject.children.each {
