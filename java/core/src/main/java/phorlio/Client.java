@@ -54,7 +54,7 @@ public class Client implements AutoCloseable {
     }
   }
 
-  private void logFailedTransceivers(final Throwable err) {
+  private void logFailedTransceiver(final Throwable err) {
     logger.log(Level.SEVERE, "Failed to open a socket", err);
   }
 
@@ -120,7 +120,7 @@ public class Client implements AutoCloseable {
           .fromArray(transceivers4.values(), transceivers6.values())
           .flatMap(Observable::fromIterable)
           .flatMapCompletable(
-              it -> it.start().doOnError(this::logFailedTransceivers).onErrorComplete()
+              it -> it.start().doOnError(this::logFailedTransceiver).onErrorComplete()
           )
           .doOnComplete(this::cleanUpFailedTransceivers)
           .doOnComplete(() -> this.state.change(ServiceState.RUNNING))
