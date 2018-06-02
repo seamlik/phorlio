@@ -68,10 +68,6 @@ public class Client implements AutoCloseable {
     if (homes.isEmpty()) {
       try {
         normalizedHomes.add(new InetSocketAddress(
-            InetAddress.getByName("0.0.0.0"),
-            Constants.PORT_CLIENT
-        ));
-        normalizedHomes.add(new InetSocketAddress(
             InetAddress.getByName("::"),
             Constants.PORT_CLIENT
         ));
