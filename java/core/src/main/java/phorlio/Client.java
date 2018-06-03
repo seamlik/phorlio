@@ -54,28 +54,6 @@ public class Client extends StandardObject implements AutoCloseable {
       .toSerialized();
   private long epoch;
 
-  private static boolean isDefaultNetworkInterface(final NetworkInterface it) {
-    try {
-      return it.isUp() && !it.isVirtual() && !it.isLoopback();
-    } catch (SocketException err) {
-      throw new RuntimeException(err);
-    }
-  }
-
-  private static NetworkInterface findDefaultNetworkInterface() {
-    return Observable
-        .fromIterable(() -> {
-          try {
-            return NetworkInterface.getNetworkInterfaces().asIterator();
-          } catch (SocketException err) {
-            throw new RuntimeException(err);
-          }
-        })
-        .filter(Client::isDefaultNetworkInterface)
-        .firstOrError()
-        .blockingGet();
-  }
-
   private void handlePacket(final DatagramPacket packet) {
     throw new UnsupportedOperationException();
   }
@@ -107,26 +85,15 @@ public class Client extends StandardObject implements AutoCloseable {
 
   /**
    * Default constructor.
-   * @param homes Manually specifies the {@link NetworkInterface} to use PCP. Use an empty
-   *        {@link Collection} in order to choose a default one.
-   * @throws IllegalStateException When fail to find a default home interface is found.
+   * @param homes Home {@link NetworkInterface} to use PCP. {@link Request}s will be sent from all
+   *        homes simultaneously, and UDP sockets will be opened on all homes.
+   * @throws IllegalArgumentException If no home {@link NetworkInterface} is specified..
    */
   public Client(final Collection<InetSocketAddress> homes) {
-    final var normalizedHomes = new LinkedHashSet<InetSocketAddress>();
     if (homes.isEmpty()) {
-      findDefaultNetworkInterface()
-          .getInterfaceAddresses()
-          .forEach(it -> normalizedHomes.add(new InetSocketAddress(
-              it.getAddress(),
-              Constants.PORT_CLIENT
-          )));
-      if (normalizedHomes.isEmpty()) {
-        throw new IllegalStateException("Could not find a suitable home interface.");
-      }
-    } else {
-      normalizedHomes.addAll(homes);
+      throw new IllegalArgumentException("Must specify at least one home interface.");
     }
-    for (final var addr : normalizedHomes) {
+    for (final var addr : homes) {
       if (addr.getAddress() instanceof Inet4Address) {
         transceivers.add(new NettyTransceiver(
             addr,
