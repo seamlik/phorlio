@@ -84,7 +84,13 @@ public class NettyTransceiver extends UdpTransceiver {
       if (state != ServiceState.RUNNING) {
         throw new IllegalStateException();
       }
-      return Completable.fromFuture(channel.writeAndFlush(packet));
+      final var buf = channel.alloc().buffer(packet.getLength());
+      buf.writeBytes(packet.getData(), packet.getOffset(), packet.getLength());
+      final var nettyPacket = new io.netty.channel.socket.DatagramPacket(
+          buf,
+          new InetSocketAddress(packet.getAddress(), packet.getPort())
+      );
+      return Completable.fromFuture(channel.writeAndFlush(nettyPacket));
     });
   }
 
