@@ -11,7 +11,7 @@ public final class Constants {
 
   public static final int PORT_SERVER = 5351;
   public static final int PORT_CLIENT = 5350;
-  public static final short VERSION = 2;
+  public static final byte VERSION = 2;
   public static final InetAddress MULTICAST_IPV4;
   public static final InetAddress MULTICAST_IPV6;
   public static final Inet4Address SERVER_IPV4;
