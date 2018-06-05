@@ -13,8 +13,10 @@ import java.net.NetworkInterface;
 import java.net.SocketException;
 import java.util.Collection;
 import java.util.EventObject;
+import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.function.Predicate;
 import java.util.logging.Level;
@@ -52,10 +54,26 @@ public class Client extends StandardObject implements AutoCloseable {
   private final FlowableProcessor<Response> inboundResponseStream = PublishProcessor
       .<Response>create()
       .toSerialized();
-  private long epoch;
+  private final Map<InetAddress, Integer> epoch = new HashMap<>();
 
   private void handlePacket(final DatagramPacket packet) {
-    throw new UnsupportedOperationException();
+    final Response response;
+    try {
+      response = Response.fromBytes(packet.content().array());
+      inboundResponseStream.onNext(response);
+    } catch (Exception err) {
+      logger.log(Level.SEVERE, "Failed to parse a response.", err);
+      return;
+    }
+
+    synchronized (epoch) {
+      final var serverIp = packet.sender().getAddress();
+      final var currentEpoch = epoch.getOrDefault(serverIp, 0);
+      if (response.getEpoch() < currentEpoch) {
+        triggerEvent(new ServerRestartedEvent(serverIp));
+      }
+      epoch.put(serverIp, response.getEpoch());
+    }
   }
 
   private void cleanUpFailedTransceivers() throws SocketException {
