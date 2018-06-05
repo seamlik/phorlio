@@ -29,4 +29,9 @@ public abstract class Packet implements ToBytes {
   public Opcode getOpcode() {
     return opcode;
   }
+
+  @Override
+  public String toString() {
+    return opcode.name();
+  }
 }

@@ -117,6 +117,8 @@ public class Client extends StandardObject implements AutoCloseable {
     if (homes.isEmpty()) {
       throw new IllegalArgumentException("Must specify at least one home interface.");
     }
+
+    // Setting up transceivers
     for (final var addr : homes) {
       if (addr.getAddress() instanceof Inet4Address) {
         transceivers.add(new NettyTransceiver(
@@ -135,6 +137,9 @@ public class Client extends StandardObject implements AutoCloseable {
     for (final var it : transceivers) {
       it.getInboundPacketStream().subscribe(this::handlePacket);
     }
+
+    // Loggings
+    inboundResponseStream.subscribe(it -> logger.info("Received a response: " + it));
   }
 
   /**
