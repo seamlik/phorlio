@@ -4,3 +4,4 @@ version = "0.1.0"
 authors = ["殷啟聰 | Kai-Chung Yan <seamlikok@gmail.com>"]
 
 [dependencies]
+bytes = "0.4"
