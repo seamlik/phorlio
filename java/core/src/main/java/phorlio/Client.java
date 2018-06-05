@@ -191,6 +191,20 @@ public class Client extends StandardObject implements AutoCloseable {
     return servers;
   }
 
+  @Deprecated
+  public void announce() {
+    // Clumsy demo code for the school assignment. Must be removed ASAP.
+    final var transceiver = transceivers.iterator().next();
+    final var request = new Request(Constants.VERSION,
+        Opcode.ANNOUNCE,
+        0,
+        transceiver.getLocalSocketAddress().getAddress()
+    );
+    final var bytes = request.toBytes();
+    final var datagram = new java.net.DatagramPacket(bytes, bytes.length, servers.get().get(0));
+    transceiver.send(datagram).subscribe();
+  }
+
   @Override
   public void close() {
     state.change(ServiceState.CLOSED);
