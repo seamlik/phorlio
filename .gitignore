@@ -1,10 +1,13 @@
 *.iml
+*.class
+.classpath
 .gradle/
 .idea/
+.project
+.settings/
 /gradle/wrapper/
 /gradlew
 /gradlew.bat
 Cargo.lock
 build/
-out/
 target/
