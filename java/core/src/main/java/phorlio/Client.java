@@ -1,16 +1,17 @@
 package phorlio;
 
-import io.netty.channel.socket.DatagramPacket;
 import io.reactivex.Completable;
 import io.reactivex.Observable;
 import io.reactivex.processors.FlowableProcessor;
 import io.reactivex.processors.PublishProcessor;
+import java.net.DatagramPacket;
 import java.net.Inet4Address;
 import java.net.Inet6Address;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.NetworkInterface;
 import java.net.SocketException;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.EventObject;
 import java.util.HashMap;
@@ -57,9 +58,15 @@ public class Client extends StandardObject implements AutoCloseable {
   private final Map<InetAddress, Integer> epoch = new HashMap<>();
 
   private void handlePacket(final DatagramPacket packet) {
+    final var data = Arrays.copyOfRange(
+        packet.getData(),
+        packet.getOffset(),
+        packet.getOffset() + packet.getLength()
+    );
     final Response response;
+
     try {
-      response = Response.fromBytes(packet.content().array());
+      response = Response.fromBytes(data);
       inboundResponseStream.onNext(response);
     } catch (Exception err) {
       logger.log(Level.SEVERE, "Failed to parse a response.", err);
@@ -67,12 +74,11 @@ public class Client extends StandardObject implements AutoCloseable {
     }
 
     synchronized (epoch) {
-      final var serverIp = packet.sender().getAddress();
-      final var currentEpoch = epoch.getOrDefault(serverIp, 0);
+      final var currentEpoch = epoch.getOrDefault(packet.getAddress(), 0);
       if (response.getEpoch() < currentEpoch) {
-        triggerEvent(new ServerRestartedEvent(serverIp));
+        triggerEvent(new ServerRestartedEvent(packet.getAddress()));
       }
-      epoch.put(serverIp, response.getEpoch());
+      epoch.put(packet.getAddress(), response.getEpoch());
     }
   }
 
@@ -125,6 +131,9 @@ public class Client extends StandardObject implements AutoCloseable {
       } else {
         logger.info("An IP address of unsupported version is used: " + addr.toString());
       }
+    }
+    for (final var it : transceivers) {
+      it.getInboundPacketStream().subscribe(this::handlePacket);
     }
   }
 
